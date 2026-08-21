@@ -168,6 +168,7 @@ mod tests {
         do_test!(LdapMsg {
             msgid: 1,
             op: LdapOp::BindRequest(LdapBindRequest {
+                version: 3,
                 dn: "".to_string(),
                 cred: LdapBindCred::Simple("".to_string()),
             }),
@@ -966,6 +967,68 @@ mod tests {
         // Is allowed!
         let _result =
             ldap_filter_from_structure_tag(encoded, 4).expect("should succeed at depth 4");
+    }
+
+    #[test]
+    fn probe_bind_protocol_error_pdus() {
+        let _ = tracing_subscriber::fmt::try_init();
+        for (label, hex, expect_version, expect_cred) in [
+            // RFC 4511 §4.2: version 99 is unsupported; the server MUST
+            // answer protocolError. The parser passes it through.
+            ("v99", "300c020101600702016304008000", Some(99), "simple"),
+            // RFC 4511 §4.2.1: an empty SASL mechanism MUST get a
+            // BindResponse with authMethodNotSupported.
+            (
+                "sasl_empty",
+                "300e02010160090201030400a3020400",
+                Some(3),
+                "sasl-empty-mech",
+            ),
+            // RFC 4511 §4.2: AuthenticationChoice is extensible; the
+            // server answers authMethodNotSupported for unknown choices.
+            // The inner `00` is not a valid TLV; lber treats the
+            // constructed payload as malformed (empty) rather than
+            // reporting truncation forever.
+            (
+                "choice5",
+                "300d02010160080201030400a50100",
+                Some(3),
+                "unsupported",
+            ),
+        ] {
+            let bytes_vec: Vec<u8> = (0..hex.len() / 2)
+                .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
+                .collect();
+            let mut buf = bytes::BytesMut::from(&bytes_vec[..]);
+            let mut codec = LdapCodec::default();
+            let msg = codec
+                .decode(&mut buf)
+                .unwrap_or_else(|e| panic!("{label}: decode error {e:?}"))
+                .expect("unexpected incomplete");
+            assert_eq!(msg.msgid, 1, "{label}: msgid must survive parsing");
+            match &msg.op {
+                crate::proto::LdapOp::BindRequest(br) => {
+                    assert_eq!(br.version, expect_version.unwrap(), "{label}: version");
+                    match expect_cred {
+                        "simple" => {
+                            assert!(matches!(br.cred, crate::proto::LdapBindCred::Simple(_)))
+                        }
+                        "sasl-empty-mech" => match &br.cred {
+                            crate::proto::LdapBindCred::SASL(sc) => {
+                                assert!(sc.mechanism.is_empty());
+                                assert!(sc.credentials.is_empty());
+                            }
+                            other => panic!("{label}: expected SASL, got {other:?}"),
+                        },
+                        "unsupported" => {
+                            assert!(matches!(br.cred, crate::proto::LdapBindCred::Unsupported))
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                other => panic!("{label}: expected BindRequest, got {other:?}"),
+            }
+        }
     }
 
     #[test]
