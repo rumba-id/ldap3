@@ -127,6 +127,8 @@ pub enum LdapResultCode {
     AffectsMultipleDSAs = 71,
     // 72 - 79
     Other = 80,
+    // RFC 4528 §2: assertion control failure.
+    AssertionFailed = 122,
     EsyncRefreshRequired = 4096,
 }
 
@@ -493,6 +495,8 @@ pub enum LdapModifyType {
     Add = 0,
     Delete = 1,
     Replace = 2,
+    /// RFC 4525 modify-increment operation (enumerated value 3).
+    Increment = 3,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -2906,6 +2910,7 @@ impl TryFrom<i64> for LdapModifyType {
             0 => Ok(LdapModifyType::Add),
             1 => Ok(LdapModifyType::Delete),
             2 => Ok(LdapModifyType::Replace),
+            3 => Ok(LdapModifyType::Increment),
             _ => Err(LdapProtoError::ModifyTypeValue),
         }
     }
@@ -3261,6 +3266,7 @@ impl TryFrom<i64> for LdapResultCode {
             69 => Ok(LdapResultCode::ObjectClassModsProhibited),
             71 => Ok(LdapResultCode::AffectsMultipleDSAs),
             80 => Ok(LdapResultCode::Other),
+            122 => Ok(LdapResultCode::AssertionFailed),
             4096 => Ok(LdapResultCode::EsyncRefreshRequired),
             i => {
                 error!("Unknown i64 ecode {}", i);
