@@ -137,6 +137,8 @@ pub enum LdapResultCode {
     TooLate = 120,
     /// RFC 3909 §2.2: the operation cannot be cancelled.
     CannotCancel = 121,
+    /// RFC 4370 §6: proxy authorization request not honored.
+    AuthorizationError = 123,
     EsyncRefreshRequired = 4096,
 }
 
@@ -3279,6 +3281,7 @@ impl TryFrom<i64> for LdapResultCode {
             119 => Ok(LdapResultCode::NoSuchOperation),
             120 => Ok(LdapResultCode::TooLate),
             121 => Ok(LdapResultCode::CannotCancel),
+            123 => Ok(LdapResultCode::AuthorizationError),
             4096 => Ok(LdapResultCode::EsyncRefreshRequired),
             i => {
                 error!("Unknown i64 ecode {}", i);
