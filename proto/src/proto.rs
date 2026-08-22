@@ -129,6 +129,14 @@ pub enum LdapResultCode {
     Other = 80,
     // RFC 4528 §2: assertion control failure.
     AssertionFailed = 122,
+    /// RFC 3909 §2.2: the operation was cancelled.
+    Canceled = 118,
+    /// RFC 3909 §2.2: no operation with the given messageID.
+    NoSuchOperation = 119,
+    /// RFC 3909 §2.2: too far advanced to cancel.
+    TooLate = 120,
+    /// RFC 3909 §2.2: the operation cannot be cancelled.
+    CannotCancel = 121,
     EsyncRefreshRequired = 4096,
 }
 
@@ -3267,6 +3275,10 @@ impl TryFrom<i64> for LdapResultCode {
             71 => Ok(LdapResultCode::AffectsMultipleDSAs),
             80 => Ok(LdapResultCode::Other),
             122 => Ok(LdapResultCode::AssertionFailed),
+            118 => Ok(LdapResultCode::Canceled),
+            119 => Ok(LdapResultCode::NoSuchOperation),
+            120 => Ok(LdapResultCode::TooLate),
+            121 => Ok(LdapResultCode::CannotCancel),
             4096 => Ok(LdapResultCode::EsyncRefreshRequired),
             i => {
                 error!("Unknown i64 ecode {}", i);
