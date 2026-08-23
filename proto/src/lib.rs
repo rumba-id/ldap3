@@ -977,7 +977,7 @@ mod tests {
         let hex =
             "3b0201026336020f6f753d70656f706c652c64633d6578616d706c652c64633d636f6d04020100040100";
         let bytes_vec: Vec<u8> = (0..hex.len() / 2)
-            .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
+            .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).expect("hex digit"))
             .collect();
         let _ = bytes_vec;
         // build programmatically instead: simpler to hand-assemble below
@@ -996,14 +996,14 @@ mod tests {
         let app3 = [0x63u8, req.len() as u8]
             .iter()
             .cloned()
-            .chain(req.into_iter())
+            .chain(req)
             .collect::<Vec<u8>>();
         let mut msg: Vec<u8> = vec![0x02, 0x01, 0x02];
         msg.extend_from_slice(&app3);
         let pdu = [0x30u8, msg.len() as u8]
             .iter()
             .cloned()
-            .chain(msg.into_iter())
+            .chain(msg)
             .collect::<Vec<u8>>();
         let mut buf = bytes::BytesMut::from(&pdu[..]);
         let mut codec = LdapCodec::default();
@@ -1042,7 +1042,7 @@ mod tests {
             ),
         ] {
             let bytes_vec: Vec<u8> = (0..hex.len() / 2)
-                .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
+                .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).expect("hex digit"))
                 .collect();
             let mut buf = bytes::BytesMut::from(&bytes_vec[..]);
             let mut codec = LdapCodec::default();
@@ -1053,7 +1053,11 @@ mod tests {
             assert_eq!(msg.msgid, 1, "{label}: msgid must survive parsing");
             match &msg.op {
                 crate::proto::LdapOp::BindRequest(br) => {
-                    assert_eq!(br.version, expect_version.unwrap(), "{label}: version");
+                    assert_eq!(
+                        br.version,
+                        expect_version.expect("version tuple"),
+                        "{label}: version"
+                    );
                     match expect_cred {
                         "simple" => {
                             assert!(matches!(br.cred, crate::proto::LdapBindCred::Simple(_)))
@@ -1068,7 +1072,7 @@ mod tests {
                         "unsupported" => {
                             assert!(matches!(br.cred, crate::proto::LdapBindCred::Unsupported))
                         }
-                        _ => unreachable!(),
+                        other => panic!("{label}: unexpected cred kind {other:?}"),
                     }
                 }
                 other => panic!("{label}: expected BindRequest, got {other:?}"),
@@ -1084,7 +1088,9 @@ mod tests {
 
         buf.resize(DEFAULT_MAX_BER_SIZE * 4, 0);
 
-        let res = server_codec.decode(&mut buf).unwrap_err();
+        let res = server_codec
+            .decode(&mut buf)
+            .expect_err("oversized buffer must fail");
 
         assert_eq!(res.kind(), io::ErrorKind::OutOfMemory);
     }
