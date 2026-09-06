@@ -125,7 +125,10 @@ pub enum LdapResultCode {
     ObjectClassModsProhibited = 69,
     // 70
     AffectsMultipleDSAs = 71,
-    // 72 - 79
+    // 72 - 75, 77 - 79
+    /// draft-ietf-ldapext-ldapv3-vlv-09 §6.2.1: the search failed due to
+    /// the VirtualListViewRequest control.
+    VirtualListViewError = 76,
     Other = 80,
     // RFC 4528 §2: assertion control failure.
     AssertionFailed = 122,
@@ -3275,6 +3278,7 @@ impl TryFrom<i64> for LdapResultCode {
             68 => Ok(LdapResultCode::EntryAlreadyExists),
             69 => Ok(LdapResultCode::ObjectClassModsProhibited),
             71 => Ok(LdapResultCode::AffectsMultipleDSAs),
+            76 => Ok(LdapResultCode::VirtualListViewError),
             80 => Ok(LdapResultCode::Other),
             122 => Ok(LdapResultCode::AssertionFailed),
             118 => Ok(LdapResultCode::Canceled),
